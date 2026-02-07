@@ -81,7 +81,8 @@ withdrawals = [
 
 # ---- END SAMPLE DATA ----------------
 
-@app.get("/dashboard/{author_id}")
+#@app.get("/dashboard/{author_id}")
+@app.get("/dashboard")
 def get_dashboard(author_id: int):
     # AUTHOR INFO
     author = next((a for a in authors if a["id"] == author_id), None)
@@ -120,3 +121,4 @@ def get_dashboard(author_id: int):
         "recent_sales": recent_sales,
         "withdrawals": author_withdrawals
     }
+
