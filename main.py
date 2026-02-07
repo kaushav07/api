@@ -22,12 +22,14 @@ class Book(BaseModel):
     title: str
     author_id: int
     royalty_per_sale: float
+    total_royalties: float = 0  # Added field
 
 class Sale(BaseModel):
     book_id: int
     sale_date: str
     quantity_sold: int
     royalty_earned: float
+    book_title: str = ""  # Added field for Bubble
 
 class Withdrawal(BaseModel):
     author_id: int
@@ -63,7 +65,12 @@ sales = [
     {"book_id": 7, "sale_date": "2026-02-02", "quantity_sold": 3, "royalty_earned": 165},
     {"book_id": 8, "sale_date": "2026-02-03", "quantity_sold": 2, "royalty_earned": 140},
     {"book_id": 9, "sale_date": "2026-02-04", "quantity_sold": 4, "royalty_earned": 360},
-    {"book_id": 1, "sale_date": "2026-02-05", "quantity_sold": 1, "royalty_earned": 50}
+    {"book_id": 1, "sale_date": "2026-02-05", "quantity_sold": 1, "royalty_earned": 50},
+    {"book_id": 2, "sale_date": "2026-02-05", "quantity_sold": 1, "royalty_earned": 75},
+    {"book_id": 3, "sale_date": "2026-02-05", "quantity_sold": 1, "royalty_earned": 100},
+    {"book_id": 4, "sale_date": "2026-02-06", "quantity_sold": 1, "royalty_earned": 60},
+    {"book_id": 5, "sale_date": "2026-02-06", "quantity_sold": 1, "royalty_earned": 80},
+    {"book_id": 6, "sale_date": "2026-02-06", "quantity_sold": 1, "royalty_earned": 120}
 ]
 
 withdrawals = [
@@ -82,13 +89,22 @@ def get_dashboard(author_id: int):
         return {"error": "Author not found"}
 
     # BOOKS
-    author_books = [b for b in books if b["author_id"] == author_id]
+    author_books = [b.copy() for b in books if b["author_id"] == author_id]
 
     # SALES
-    author_sales = [s for s in sales if any(b["id"] == s["book_id"] for b in author_books)]
+    author_sales = [s.copy() for s in sales if any(b["id"] == s["book_id"] for b in author_books)]
 
     # TOTAL EARNINGS
     total_earnings = sum(s["royalty_earned"] for s in author_sales)
+
+    # TOTAL ROYALTIES PER BOOK
+    for b in author_books:
+        b["total_royalties"] = sum(s["royalty_earned"] for s in author_sales if s["book_id"] == b["id"])
+
+    # ADD BOOK TITLE TO RECENT SALES
+    for s in author_sales:
+        book = next((b for b in author_books if b["id"] == s["book_id"]), None)
+        s["book_title"] = book["title"] if book else "Unknown"
 
     # RECENT SALES (last 10)
     recent_sales = sorted(author_sales, key=lambda x: x["sale_date"], reverse=True)[:10]
