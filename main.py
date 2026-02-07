@@ -83,42 +83,53 @@ withdrawals = [
 
 #@app.get("/dashboard/{author_id}")
 @app.get("/dashboard")
-def get_dashboard(author_id: int):
-    # AUTHOR INFO
+def get_dashboard(author_id: str = Query(..., description="Author ID")):
+    try:
+        author_id = int(author_id)  # Convert string to int
+    except:
+        return {"error": "author_id must be a number"}
+
+    # Author info
     author = next((a for a in authors if a["id"] == author_id), None)
-    if author is None:
+    if not author:
         return {"error": "Author not found"}
 
-    # BOOKS
-    author_books = [b.copy() for b in books if b["author_id"] == author_id]
+    # Books with total royalties
+    author_books = [b for b in books if b["author_id"] == author_id]
+    books_data = []
+    for b in author_books:
+        total = sum(s["royalty_earned"] for s in sales if s["book_id"] == b["id"])
+        books_data.append({
+            "id": b["id"],
+            "title": b["title"],
+            "royalty_per_sale": b["royalty_per_sale"],
+            "total_royalty": total
+        })
 
-    # SALES
-    author_sales = [s.copy() for s in sales if any(b["id"] == s["book_id"] for b in author_books)]
+    # Recent sales
+    author_sales = [s for s in sales if s["book_id"] in [b["id"] for b in author_books]]
+    recent_sales = sorted(author_sales, key=lambda x: x["sale_date"], reverse=True)[:10]
+    recent_sales_data = []
+    for s in recent_sales:
+        book_title = next((b["title"] for b in books if b["id"] == s["book_id"]), "")
+        recent_sales_data.append({
+            "book_title": book_title,
+            "sale_date": s["sale_date"],
+            "quantity_sold": s["quantity_sold"],
+            "royalty_earned": s["royalty_earned"]
+        })
 
-    # TOTAL EARNINGS
+    # Total earnings
     total_earnings = sum(s["royalty_earned"] for s in author_sales)
 
-    # TOTAL ROYALTIES PER BOOK
-    for b in author_books:
-        b["total_royalties"] = sum(s["royalty_earned"] for s in author_sales if s["book_id"] == b["id"])
-
-    # ADD BOOK TITLE TO RECENT SALES
-    for s in author_sales:
-        book = next((b for b in author_books if b["id"] == s["book_id"]), None)
-        s["book_title"] = book["title"] if book else "Unknown"
-
-    # RECENT SALES (last 10)
-    recent_sales = sorted(author_sales, key=lambda x: x["sale_date"], reverse=True)[:10]
-
-    # WITHDRAWALS
+    # Withdrawals
     author_withdrawals = [w for w in withdrawals if w["author_id"] == author_id]
 
     return {
         "total_earnings": total_earnings,
         "current_balance": author["current_balance"],
         "total_books": len(author_books),
-        "books": author_books,
-        "recent_sales": recent_sales,
+        "books": books_data,
+        "recent_sales": recent_sales_data,
         "withdrawals": author_withdrawals
     }
-
